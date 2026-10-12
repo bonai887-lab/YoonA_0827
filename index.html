@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>카카오 · 재무분석</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script><style>
+*{box-sizing:border-box}body{background:#FDFDFF;color:#1E2433;font-family:system-ui,sans-serif;margin:0}header,main{max-width:1200px;margin:auto;padding:24px}header{border-bottom:1px solid #E2E6F0}h1{margin:8px 0}p,small{color:#505A74;line-height:1.7}.row,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{border:1px solid #E2E6F0;border-radius:12px;padding:20px;margin-bottom:16px}.num{font-size:28px;font-weight:700}select,button{padding:10px;margin:8px;border:1px solid #CDD3E0;background:white;border-radius:6px}.chart{height:270px}table{border-collapse:collapse;width:100%;font-size:14px}td,th{text-align:right;padding:10px;border-bottom:1px solid #E2E6F0}td:first-child,th:first-child{text-align:left}.scroll{overflow:auto}a{color:#1751D0}</style>
+<header><small>YoonA_0827 / DART FINANCIAL INTELLIGENCE</small><h1>카카오 재무분석</h1><p id="meta"></p><label>선택 연도 <select id="year"></select></label><label>추세 시작 <select id="start"></select></label><button id="download">CSV 다운로드</button></header><main><div id="state"></div><div class="row" id="kpis"></div><div class="grid"><section class="card"><h3>매출액 추세 · 억원</h3><div class="chart"><canvas id="revenue"></canvas></div></section><section class="card"><h3>수익성 추세 · %</h3><div class="chart"><canvas id="margins"></canvas></div></section><section class="card"><h3>현금창출력 · 억원</h3><div class="chart"><canvas id="cashflow"></canvas></div></section></div><section class="card"><h3>선택 연도 · 수치와 비율</h3><div class="scroll"><table><thead><tr><th>지표</th><th>수치</th><th>기준 / 계산식</th></tr></thead><tbody id="table"></tbody></table></div></section><section class="card"><h3>분석 및 검토 항목</h3><ul id="notes"></ul><div id="sources"></div></section><p>연결·연간 기준. ROE는 지배주주순이익 ÷ 평균 지배주주지분. ROA는 연결순이익 ÷ 평균 총자산. 전기 잔액은 동일 공시의 비교 수치를 사용합니다. 연도별 공시 간 재작성 차이는 별도 검토가 필요합니다. FCF = 영업현금흐름 − 유형·무형자산 현금 취득액. 누락은 0이 아니며 선을 연결하지 않습니다. 카카오의 비용 성격별 표시를 고려해 매출총이익률은 강제 산출하지 않습니다. EBITDA·순차입금·이자보상배율·ROIC·CCC·시장가치 지표는 주석 또는 외부 데이터 검증 전 미산출입니다. 이 화면은 투자 권유가 아닙니다.</p></main>
+<script>
+const DATA={"company": "카카오", "updated_at": null, "records": [], "issues": []};
+const records=DATA.records; const $=id=>document.getElementById(id);
+const fmt=(v,u='')=>v==null?'확인 필요':v.toLocaleString('ko-KR',{maximumFractionDigits:2})+u;
+const metrics=[['revenue','매출액','원','공시 당기금액'],['operating_profit','영업이익','원','공시 당기금액'],['net_income','연결순이익','원','공시 당기금액'],['owners_income','지배주주순이익','원','공시 귀속분'],['assets','자산총계','원','기말'],['liabilities','부채총계','원','기말'],['equity','자본총계','원','기말'],['cash','현금및현금성자산','원','기말'],['cfo','영업현금흐름','원','연간'],['capex','CAPEX','원','유형·무형자산 취득 현금'],['fcf','FCF','원','CFO − CAPEX'],['revenue_growth','매출증가율','%','당기 / 전기 − 1'],['operating_margin','영업이익률','%','영업이익 / 매출'],['net_margin','순이익률','%','연결순이익 / 매출'],['roa','ROA','%','연결순이익 / 평균 총자산'],['roe','지배주주 ROE','%','지배주주순이익 / 평균 지배주주지분'],['current_ratio','유동비율','%','유동자산 / 유동부채'],['debt_ratio','부채비율','%','부채 / 자본'],['equity_ratio','자기자본비율','%','자본 / 자산'],['asset_turnover','총자산회전율','배','매출 / 평균 자산'],['cash_conversion','CFO/순이익','배','CFO / 양수 순이익']];
+const value=(r,k)=>k in r.values?r.values[k]:r.ratios[k];
+let charts=[];
+function chart(id,rs,defs,unit){if(!window.Chart)return;charts.push(new Chart($(id),{type:'line',data:{labels:rs.map(r=>r.year),datasets:defs.map(([k,label,c,scale])=>({label,data:rs.map(r=>value(r,k)==null?null:value(r,k)/scale),borderColor:c,backgroundColor:c,spanGaps:false,tension:0,pointRadius:3,pointHitRadius:12,borderWidth:2}))},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:defs.length>1}},scales:{y:{title:{display:true,text:unit},grid:{color:'#E2E6F0'}},x:{grid:{display:false}}}}}));}
+function render(){
+ const r=records.find(r=>String(r.year)===$('year').value);if(!r)return;
+ const rs=records.filter(x=>x.year>=+$('start').value&&x.year<=r.year);
+ $('kpis').innerHTML=[['revenue','매출액'],['operating_profit','영업이익'],['cfo','영업현금흐름'],['fcf','FCF']].map(([k,n])=>`<section class="card"><small>${n} · ${r.year}</small><div class="num">${fmt(value(r,k)==null?null:value(r,k)/1e8,' 억원')}</div></section>`).join('');
+ $('table').innerHTML=metrics.map(([k,n,u,f])=>`<tr><td>${n}</td><td>${fmt(value(r,k),u)}</td><td>${f}</td></tr>`).join('');
+ const notes=[...r.warnings];
+ if(r.ratios.revenue_growth!=null)notes.push(`매출은 비교 공시 전년 대비 ${fmt(r.ratios.revenue_growth,'%')} 변동했습니다. 인수·환율·계속영업 범위 변화는 별도 확인이 필요합니다.`);
+ if(r.ratios.fcf!=null)notes.push(r.ratios.fcf<0?'FCF 음수: 투자 증가와 운영 현금 부족을 구분해 검토하세요.':'FCF 양수: 투자 후 현금이 남지만 반복 가능성과 현금 사용 제한을 확인하세요.');
+ if(r.values.operating_profit>0&&r.values.net_income<0)notes.push('영업흑자·순손실: 손상차손, 금융손익, 세금 등 영업 외 항목을 공시 주석에서 확인하세요.');
+ $('notes').replaceChildren(...notes.map(n=>{const li=document.createElement('li');li.textContent=n;return li}));
+ $('sources').replaceChildren(...r.receipts.map(no=>{const a=document.createElement('a');a.href='https://dart.fss.or.kr/dsaf001/main.do?rcpNo='+no;a.target='_blank';a.rel='noopener';a.textContent='DART 원문 '+no+' ';return a}));
+ charts.forEach(c=>c.destroy());charts=[];
+ chart('revenue',rs,[['revenue','매출액','#1751D0',1e8]],'억원');
+ chart('margins',rs,[['operating_margin','영업이익률','#1751D0',1],['net_margin','순이익률','#E2661E',1]],'%');
+ chart('cashflow',rs,[['cfo','CFO','#1751D0',1e8],['fcf','FCF','#E2661E',1e8]],'억원');
+}
+$('meta').textContent=`연결 · 연간 · 원화 | 갱신: ${DATA.updated_at||'미수집'}`;
+if(!records.length){$('state').textContent='실제 데이터가 아직 없습니다. GitHub Secrets에 DART_API_KEY를 등록하고 수집 워크플로를 실행하세요. 이 화면에는 예시 재무수치가 없습니다.';}
+else{for(const id of ['year','start'])for(const r of records){const o=document.createElement('option');o.value=r.year;o.textContent=r.year;$(id).append(o)}$('year').value=records.at(-1).year;render();}
+if(DATA.issues.length){const p=document.createElement('p');p.textContent=DATA.issues.map(x=>x.year+': '+x.message).join(' / ');$('state').append(p)}
+if(!window.Chart)$('state').append(document.createTextNode(' 차트 라이브러리 연결 실패: 수치는 표에서 확인할 수 있습니다.'));
+$('year').onchange=render;$('start').onchange=render;
+$('download').onclick=()=>{const rs=records.filter(r=>r.year>=+$('start').value&&r.year<=+$('year').value);const text='\uFEFF'+[['year',...metrics.map(m=>m[0])].join(','),...rs.map(r=>[r.year,...metrics.map(m=>value(r,m[0])??'')].join(','))].join('\n');const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='kakao_financials.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+</script></html>
